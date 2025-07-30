@@ -1,0 +1,465 @@
+/* style.css */
+
+/* Variáveis Globais - Paleta de cores otimizada para contraste e temas claro/escuro */
+:root {
+    --primary-color: #2e7d32; /* Verde escuro (WCAG-compliant com fundo claro) */
+    --secondary-color: #1565c0; /* Azul escuro (melhor contraste que #2196F3) */
+    --accent-color-1: #ffca28; /* Amarelo dourado (ajustado para contraste) */
+    --accent-color-2: #e64a19; /* Laranja escuro (melhor contraste que #FF5722) */
+    --background-color: #f5f5f5; /* Cinza claro (fundo padrão claro) */
+    --background-dark: #121212; /* Fundo escuro para tema dark */
+    --card-background: #ffffff; /* Branco puro para cards (tema claro) */
+    --card-background-dark: #1e1e1e; /* Fundo escuro para cards (tema dark) */
+    --text-color: #212121; /* Cinza escuro para texto (melhor contraste) */
+    --text-color-dark: #e0e0e0; /* Texto claro para tema dark */
+    --light-text-color: #616161; /* Cinza médio para texto secundário */
+    --light-text-color-dark: #b0b0b0; /* Texto secundário para tema dark */
+    --border-color: #e0e0e0; /* Cinza claro para bordas */
+    --border-color-dark: #424242; /* Borda para tema dark */
+    --font-family: 'Roboto', 'Arial', sans-serif; /* Fonte moderna com fallback */
+    --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave */
+    --shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.3); /* Sombra para tema dark */
+}
+
+/* Estilo global para o corpo da página */
+body {
+    font-family: var(--font-family);
+    color: var(--text-color);
+    background-color: var(--background-color);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+/* Suporte ao tema escuro do Streamlit */
+@media (prefers-color-scheme: dark) {
+    body {
+        color: var(--text-color-dark);
+        background-color: var(--background-dark);
+    }
+}
+
+/* Títulos */
+.main-title {
+    color: var(--primary-color);
+    text-align: center;
+    font-size: 2.5rem; /* Ajustado para melhor legibilidade */
+    font-weight: 700;
+    margin: 1rem 0 0.5rem;
+    letter-spacing: 0.03em;
+    text-shadow: var(--shadow-light);
+}
+
+@media (prefers-color-scheme: dark) {
+    .main-title {
+        text-shadow: var(--shadow-dark);
+    }
+}
+
+.section-title {
+    color: var(--secondary-color);
+    font-size: 1.8rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin: 2rem 0 1.2rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .section-title {
+        border-bottom-color: var(--border-color-dark);
+    }
+}
+
+.subsection-title {
+    color: var(--text-color);
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 1.5rem 0 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .subsection-title {
+        color: var(--text-color-dark);
+    }
+}
+
+/* Descrição e Mensagens */
+.description {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--light-text-color);
+    margin: 0 auto 2rem;
+    max-width: 800px;
+    line-height: 1.8;
+}
+
+@media (prefers-color-scheme: dark) {
+    .description {
+        color: var(--light-text-color-dark);
+    }
+}
+
+/* Containers Streamlit */
+.stApp {
+    padding: 2rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto; /* Centraliza o conteúdo */
+}
+
+@media (max-width: 768px) {
+    .stApp {
+        padding: 1rem;
+    }
+}
+
+/* Sidebar */
+.stSidebar {
+    background-color: var(--card-background);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-light);
+    border-right: 1px solid var(--border-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    .stSidebar {
+        background-color: var(--card-background-dark);
+        box-shadow: var(--shadow-dark);
+        border-right-color: var(--border-color-dark);
+    }
+}
+
+.sidebar-header {
+    color: var(--primary-color);
+    font-size: 1.6rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Estilo para labels dos file uploaders */
+.stFileUploader > label {
+    color: var(--text-color);
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .stFileUploader > label {
+        color: var(--text-color-dark);
+    }
+}
+
+/* Estilo para o botão de upload do Streamlit */
+.stFileUploader [kind="primary"] {
+    background-color: var(--secondary-color) !important;
+    color: var(--card-background) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0.6rem 1.2rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    transition: background-color 0.3s ease, transform 0.2s ease !important;
+}
+
+.stFileUploader [kind="primary"]:hover {
+    background-color: #0d47a1 !important; /* Azul mais escuro */
+    transform: translateY(-1px) !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background-color: var(--card-background);
+    border-radius: 6px;
+    padding: 0.8rem 1.5rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+    .stTabs [data-baseweb="tab"] {
+        background-color: var(--card-background-dark);
+        color: var(--text-color-dark);
+        border-color: var(--border-color-dark);
+    }
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: var(--background-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+@media (prefers-color-scheme: dark) {
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: var(--background-dark);
+    }
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: var(--primary-color) !important;
+    color: var(--card-background) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: var(--shadow-light);
+}
+
+/* Mensagens de feedback (sucesso, erro, aviso, info) */
+.stAlert {
+    border-radius: 6px;
+    padding: 1rem;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+}
+
+.stAlert.success {
+    background-color: #e8f5e9;
+    color: var(--primary-color);
+    border-color: #a5d6a7;
+}
+
+.stAlert.error {
+    background-color: #ffebee;
+    color: #c62828;
+    border-color: #ef9a9a;
+}
+
+.stAlert.warning {
+    background-color: #fff8e1;
+    color: #ff8f00;
+    border-color: #ffca28;
+}
+
+.stAlert.info {
+    background-color: #e3f2fd;
+    color: var(--secondary-color);
+    border-color: #90caf9;
+}
+
+@media (prefers-color-scheme: dark) {
+    .stAlert.success {
+        background-color: #2a3d2a; /* Verde escuro */
+        border-color: #4a704a;
+    }
+    .stAlert.error {
+        background-color: #3d1c1c;
+        border-color: #704a4a;
+    }
+    .stAlert.warning {
+        background-color: #3d2f1c;
+        border-color: #705a3a;
+    }
+    .stAlert.info {
+        background-color: #1c2a3d;
+        border-color: #4a6070;
+    }
+}
+
+/* Selectbox */
+.stSelectbox > label {
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .stSelectbox > label {
+        color: var(--text-color-dark);
+    }
+}
+
+.stSelectbox div[data-baseweb="select"] {
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    font-size: 0.95rem;
+    transition: border-color 0.3s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+    .stSelectbox div[data-baseweb="select"] {
+        border-color: var(--border-color-dark);
+        background-color: var(--card-background-dark);
+    }
+}
+
+.stSelectbox div[data-baseweb="select"]:hover {
+    border-color: var(--primary-color);
+}
+
+/* Botões gerais */
+.stButton > button {
+    background-color: var(--primary-color);
+    color: var(--card-background);
+    border: none;
+    padding: 0.7rem 1.4rem;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    cursor: pointer;
+}
+
+.stButton > button:hover {
+    background-color: #1b5e20; /* Verde mais escuro */
+    transform: translateY(-2px);
+}
+
+@media (prefers-color-scheme: dark) {
+    .stButton > button {
+        color: var(--text-color-dark);
+    }
+}
+
+/* Estilo para mapas Folium */
+div[style*="overflow: auto"] {
+    border-radius: 8px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+    margin: 1rem 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    div[style*="overflow: auto"] {
+        box-shadow: var(--shadow-dark);
+        border-color: var(--border-color-dark);
+    }
+}
+
+/* Estilo para gráficos Plotly e Matplotlib */
+.plotly-graph-div, .stPlotlyChart, .stPyplot {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-light);
+    background-color: var(--card-background);
+}
+
+@media (prefers-color-scheme: dark) {
+    .plotly-graph-div, .stPlotlyChart, .stPyplot {
+        box-shadow: var(--shadow-dark);
+        background-color: var(--card-background-dark);
+    }
+}
+
+/* Rodapé */
+.footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+    color: var(--light-text-color);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+    .footer {
+        border-top-color: var(--border-color-dark);
+        color: var(--light-text-color-dark);
+    }
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 2rem;
+    }
+    .section-title {
+        font-size: 1.5rem;
+    }
+    .subsection-title {
+        font-size: 1.2rem;
+    }
+    .description {
+        font-size: 1rem;
+    }
+    .stTabs [data-baseweb="tab"] {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+    .stFileUploader [kind="primary"] {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.9rem !important;
+    }
+    .stButton > button {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-title {
+        font-size: 1.8rem;
+    }
+    .section-title {
+        font-size: 1.3rem;
+    }
+    .subsection-title {
+        font-size: 1.1rem;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+}
+/* ======= Melhorias visuais gerais ======= */
+
+/* Ajuste para margens entre os elementos do layout */
+section, .block-container {
+  margin-bottom: 2rem;
+}
+
+/* Correção de alinhamento para títulos e gráficos */
+h1, h2, h3, .stPlotlyChart, .stPyplot {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Ajuste no padding do container geral */
+.block-container {
+  padding-top: 1rem !important;
+  padding-bottom: 2rem !important;
+}
+
+/* Ajuste de contraste para abas ativas e hover */
+.stTabs [aria-selected="true"] {
+  background-color: var(--secondary-color) !important;
+  color: var(--card-background) !important;
+  border-color: var(--secondary-color) !important;
+}
+
+/* Reduz espaçamento vertical excessivo em uploads e selects */
+.stFileUploader, .stSelectbox {
+  margin-bottom: 1rem;
+}
+
+/* Estilo refinado para cards/mapas */
+div[data-testid="stVerticalBlock"] > div {
+  background-color: var(--card-background);
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: var(--shadow-light);
+  margin-bottom: 1.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  div[data-testid="stVerticalBlock"] > div {
+    background-color: var(--card-background-dark);
+    box-shadow: var(--shadow-dark);
+  }
+}
+
+/* Uniformização de botões grandes (caso apareçam) */
+button[kind="primary"], .css-1emrehy {
+  font-size: 1rem !

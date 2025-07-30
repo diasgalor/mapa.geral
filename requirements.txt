@@ -1,0 +1,12 @@
+streamlit>=1.25.0
+pandas
+openpyxl
+unidecode
+geopandas
+pyproj
+shapely
+folium
+plotly
+numpy
+matplotlib
+scipy
