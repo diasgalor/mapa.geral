@@ -462,4 +462,5 @@ div[data-testid="stVerticalBlock"] > div {
 
 /* Uniformização de botões grandes (caso apareçam) */
 button[kind="primary"], .css-1emrehy {
-  font-size: 1rem !
+  font-size: 1rem !important;
+}
