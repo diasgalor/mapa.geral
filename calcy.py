@@ -259,13 +259,13 @@ def plotar_interpolacao(grid_x, grid_y, grid_numerico, geom_fazenda, bounds, df_
     ax.set_ylim(miny, maxy)
     ax.set_xlabel("Longitude", color='#E0E0E0')
     ax.set_ylabel("Latitude", color='#E0E0E0')
-    ax.set_title(f"Intensidade do Sinal - {unidade}", color='#E0E0E0')
+    ax.set_title(f"Intensidade do Sinal - {unidade}", color='#FFFFFF')
     ax.tick_params(colors='#E0E0E0')
 
     cbar = plt.colorbar(im, ax=ax, ticks=[1.5, 2.5, 3.5, 4.5])
     cbar.ax.set_yticklabels(['Ruim', 'Regular', 'Bom', 'Ótimo'], color='#FFFFFF')
     cbar.set_label('Classe de Sinal', color='#FFFFFF')
-    cbar.ax.set_facecolor('#424242')  # Fundo da colorbar mais claro para contraste
+    cbar.ax.set_facecolor('#424242')
 
     ax.legend(title="Legenda", loc='upper right', markerscale=1.2, facecolor='#424242', edgecolor='#FFFFFF', labelcolor='#FFFFFF')
     ax.grid(True, linestyle='--', alpha=0.5, color='#424242')
@@ -371,8 +371,6 @@ if gdf_kml is None and os.path.exists(KML_PATH):
             gdf_kml['NomeFazendaKML_Padronizada'] = gdf_kml['NomeFazendaExtraido'].apply(formatar_nome)
             gdf_kml['geometry'] = gdf_kml['geometry'].apply(lambda geom: geom.buffer(0) if geom and not geom.is_valid else geom)
             gdf_kml = gdf_kml[gdf_kml['geometry'].notna() & ~gdf_kml['geometry'].is_empty]
-        else:
-            gdf_kml = None
     except Exception as e:
         st.error(f"Erro ao carregar KML salvo: {e}")
         gdf_kml = None
@@ -384,7 +382,7 @@ if df_csv is not None and not df_csv.empty:
     # Paleta de cores para gráficos
     cores_personalizadas = ["#2E7D32", "#1565C0", "#FFCA28", "#E64A19"]  # Verde, Azul, Amarelo, Laranja
 
-    # Tela Principal: Gráficos de Percentual 4G e Comunicação
+    # Tela Principal: Gráficos de Percentual 4G e Comunicação (Dados Móveis e Solinfnet)
     st.markdown("<h3 class='subsection-title'>Visão Geral</h3>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
 
@@ -406,6 +404,7 @@ if df_csv is not None and not df_csv.empty:
                 plot_bgcolor='#121212',
                 paper_bgcolor='#121212',
                 font_color='#FFFFFF',
+                title_font_color='#FFFFFF',
                 legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
                 height=400
             )
@@ -414,52 +413,28 @@ if df_csv is not None and not df_csv.empty:
             st.warning("Coluna 'D_MOVEIS_AT' não encontrada.")
 
     with col2:
-        st.markdown("<h4 class='sub-subsection-title'>Equipamentos e Comunicação por Unidade</h4>", unsafe_allow_html=True)
-        if 'DESC_TIPO_EQUIPAMENTO' in df_csv.columns and 'UNIDADE' in df_csv.columns:
-            df_contagem_1 = df_csv[
-                df_csv["DESC_TIPO_EQUIPAMENTO"].str.contains("ESTACAO|PLUVIOMETRO", case=False, na=False)
-            ].groupby(['UNIDADE', 'DESC_TIPO_EQUIPAMENTO']).size().reset_index(name='Quantidade')
-            fig1 = px.bar(
-                df_contagem_1,
-                x='UNIDADE',
-                y='Quantidade',
-                color='DESC_TIPO_EQUIPAMENTO',
-                title='Pluviômetros e Estações por Unidade',
-                text='Quantidade',
-                barmode='stack',
-                color_discrete_sequence=cores_personalizadas
-            )
-            fig1.update_layout(
-                plot_bgcolor='#121212',
-                paper_bgcolor='#121212',
-                font_color='#FFFFFF',
-                legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
-                height=400
-            )
-            st.plotly_chart(fig1, use_container_width=True)
-        else:
-            st.warning("Colunas 'DESC_TIPO_EQUIPAMENTO' ou 'UNIDADE' não encontradas.")
-
+        st.markdown("<h4 class='sub-subsection-title'>Distribuição de Dados Móveis e Solinfnet por Unidade</h4>", unsafe_allow_html=True)
         if 'TIPO_COMUNICACAO' in df_csv.columns and 'UNIDADE' in df_csv.columns:
-            df_contagem_2 = df_csv[df_csv['TIPO_COMUNICACAO'] != '4G'].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
-            fig2 = px.bar(
-                df_contagem_2,
+            df_contagem_com = df_csv[df_csv['TIPO_COMUNICACAO'].isin(['Dados Móveis', 'Solinfnet'])].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
+            fig_com = px.bar(
+                df_contagem_com,
                 x='UNIDADE',
                 y='Quantidade',
                 color='TIPO_COMUNICACAO',
-                title='Tipos de Comunicação por Unidade (Excluindo 4G)',
+                title='<b>Dados Móveis e Solinfnet por Unidade</b>',
                 text='Quantidade',
                 barmode='stack',
                 color_discrete_sequence=cores_personalizadas
             )
-            fig2.update_layout(
+            fig_com.update_layout(
                 plot_bgcolor='#121212',
                 paper_bgcolor='#121212',
                 font_color='#FFFFFF',
+                title_font_color='#FFFFFF',
                 legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
                 height=400
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig_com, use_container_width=True)
         else:
             st.warning("Colunas 'TIPO_COMUNICACAO' ou 'UNIDADE' não encontradas.")
 
@@ -534,7 +509,6 @@ if df_csv is not None and not df_csv.empty:
                 )
 
                 with st.spinner("Gerando mapa de sinal..."):
-                    # Limpar cache ao mudar a unidade
                     cache_key = f"interpolacao_idw_{selected_unidade}"
                     interpolacao_idw.clear()
                     df_fazenda = gdf_equipamentos[gdf_equipamentos['UNIDADE_Padronizada'] == selected_unidade].copy()
@@ -623,6 +597,7 @@ if df_csv is not None and not df_csv.empty:
                 plot_bgcolor='#121212',
                 paper_bgcolor='#121212',
                 font_color='#FFFFFF',
+                title_font_color='#FFFFFF',
                 legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
                 height=600,
                 xaxis=dict(title='Quantidade de Equipamentos'),
