@@ -1,5 +1,5 @@
 :root {
-    --primary-color: #FFFFFF;
+    --primary-color: #2E7D32;
     --secondary-color: #1565C0;
     --background-color: #121212;
     --text-color: #FFFFFF;
@@ -21,7 +21,7 @@ body {
 
 .section-title {
     font-size: 1.5rem;
-    color: #FFFFFF; /* Alterado para branco */
+    color: #FFFFFF; /* Já ajustado anteriormente para branco */
 }
 
 .subsection-title {
