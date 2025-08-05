@@ -459,19 +459,25 @@ else:
                         )
                         st.plotly_chart(fig_4g, use_container_width=True)
                     else:
-                        st.warning("Nenhum dado válido encontrado na coluna 'D_MOVEIS_AT'.")
+                        st.warning("Nenhum dado válido encontrado na coluna 'D_MOVEIS_AT'. Valores encontrados: {}".format(df_csv['D_MOVEIS_AT'].unique().tolist()))
                 else:
                     st.warning("Coluna 'D_MOVEIS_AT' não encontrada.")
 
             with col2:
                 st.markdown("<h4 class='sub-subsection-title'>Distribuição de Dados Móveis e Solinfnet por Unidade</h4>", unsafe_allow_html=True)
                 if 'TIPO_COMUNICACAO' in df_csv.columns and 'UNIDADE' in df_csv.columns:
-                    # Padronizar valores de TIPO_COMUNICACAO
-                    df_csv['TIPO_COMUNICACAO'] = df_csv['TIPO_COMUNICACAO'].str.upper().replace({
+                    # Depuração: Exibir valores únicos antes da padronização
+                    st.write("Valores únicos em TIPO_COMUNICACAO (antes):", df_csv['TIPO_COMUNICACAO'].unique().tolist())
+                    st.write("Valores únicos em UNIDADE:", df_csv['UNIDADE'].unique().tolist())
+                    
+                    # Padronizar valores de TIPO_COMUNICACAO, lidando com nulos
+                    df_csv['TIPO_COMUNICACAO'] = df_csv['TIPO_COMUNICACAO'].fillna('').str.upper().replace({
                         'DADOS MOVEIS': 'Dados Móveis',
-                        'SOLINFNET': 'Solinfnet'
+                        'SOLINFNET': 'Solinfnet',
+                        '': 'Desconhecido'  # Tratar strings vazias
                     })
-                    df_contagem_com = df_csv[df_csv['TIPO_COMUNICACAO'].isin(['DADOS MOVEIS', 'SOLINFNET'])].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
+                    # Filtrar apenas Dados Móveis e Solinfnet
+                    df_contagem_com = df_csv[df_csv['TIPO_COMUNICACAO'].isin(['Dados Móveis', 'Solinfnet'])].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
                     if not df_contagem_com.empty:
                         fig_com = px.bar(
                             df_contagem_com,
@@ -493,7 +499,7 @@ else:
                         )
                         st.plotly_chart(fig_com, use_container_width=True)
                     else:
-                        st.warning("Nenhum dado válido encontrado para 'TIPO_COMUNICACAO' (Dados Móveis ou Solinfnet).")
+                        st.warning("Nenhum dado válido encontrado para 'TIPO_COMUNICACAO' (Dados Móveis ou Solinfnet). Valores após padronização: {}".format(df_csv['TIPO_COMUNICACAO'].unique().tolist()))
                 else:
                     st.warning("Colunas 'TIPO_COMUNICACAO' ou 'UNIDADE' não encontradas.")
 
