@@ -471,7 +471,7 @@ else:
                         'DADOS MOVEIS': 'Dados Móveis',
                         'SOLINFNET': 'Solinfnet'
                     })
-                    df_contagem_com = df_csv[df_csv['TIPO_COMUNICACAO'].isin(['Dados Móveis', 'Solinfnet'])].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
+                    df_contagem_com = df_csv[df_csv['TIPO_COMUNICACAO'].isin(['DADOS MOVEIS', 'SOLINFNET'])].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
                     if not df_contagem_com.empty:
                         fig_com = px.bar(
                             df_contagem_com,
