@@ -21,7 +21,7 @@ body {
 
 .section-title {
     font-size: 1.5rem;
-    color: var(--primary-color);
+    color: #FFFFFF; /* Alterado para branco */
 }
 
 .subsection-title {
