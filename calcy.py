@@ -435,54 +435,68 @@ else:
             with col1:
                 st.markdown("<h4 class='sub-subsection-title'>Percentual de Equipamentos com Dados Móveis</h4>", unsafe_allow_html=True)
                 if 'D_MOVEIS_AT' in df_csv.columns:
+                    # Padronizar valores de D_MOVEIS_AT
+                    df_csv['D_MOVEIS_AT'] = df_csv['D_MOVEIS_AT'].str.upper().replace({'SIM': 'Sim', 'NAO': 'Não'})
                     contagem_moveis = df_csv['D_MOVEIS_AT'].value_counts()
-                    fig_4g = px.pie(
-                        values=contagem_moveis.values,
-                        names=contagem_moveis.index,
-                        title='<b>Percentual de Equipamentos com Dados Móveis</b>',
-                        hole=0.5,
-                        color_discrete_sequence=cores_personalizadas
-                    )
-                    fig_4g.update_traces(textinfo='percent+label', textfont_size=14, textfont_color='#FFFFFF')
-                    fig_4g.update_layout(
-                        showlegend=True,
-                        legend_title='Dados Móveis',
-                        plot_bgcolor='#121212',
-                        paper_bgcolor='#121212',
-                        font_color='#FFFFFF',
-                        title_font_color='#FFFFFF',
-                        legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
-                        height=400
-                    )
-                    st.plotly_chart(fig_4g, use_container_width=True)
+                    if not contagem_moveis.empty:
+                        fig_4g = px.pie(
+                            values=contagem_moveis.values,
+                            names=contagem_moveis.index,
+                            title='<b>Percentual de Equipamentos com Dados Móveis</b>',
+                            hole=0.5,
+                            color_discrete_sequence=cores_personalizadas
+                        )
+                        fig_4g.update_traces(textinfo='percent+label', textfont_size=14, textfont_color='#FFFFFF')
+                        fig_4g.update_layout(
+                            showlegend=True,
+                            legend_title='Dados Móveis',
+                            plot_bgcolor='#121212',
+                            paper_bgcolor='#121212',
+                            font_color='#FFFFFF',
+                            title_font_color='#FFFFFF',
+                            legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
+                            height=400
+                        )
+                        st.plotly_chart(fig_4g, use_container_width=True)
+                    else:
+                        st.warning("Nenhum dado válido encontrado na coluna 'D_MOVEIS_AT'.")
                 else:
                     st.warning("Coluna 'D_MOVEIS_AT' não encontrada.")
 
             with col2:
                 st.markdown("<h4 class='sub-subsection-title'>Distribuição de Dados Móveis e Solinfnet por Unidade</h4>", unsafe_allow_html=True)
                 if 'TIPO_COMUNICACAO' in df_csv.columns and 'UNIDADE' in df_csv.columns:
+                    # Padronizar valores de TIPO_COMUNICACAO
+                    df_csv['TIPO_COMUNICACAO'] = df_csv['TIPO_COMUNICACAO'].str.upper().replace({
+                        'DADOS MOVEIS': 'Dados Móveis',
+                        'SOLINFNET': 'Solinfnet'
+                    })
                     df_contagem_com = df_csv[df_csv['TIPO_COMUNICACAO'].isin(['Dados Móveis', 'Solinfnet'])].groupby(['UNIDADE', 'TIPO_COMUNICACAO']).size().reset_index(name='Quantidade')
-                    fig_com = px.bar(
-                        df_contagem_com,
-                        x='UNIDADE',
-                        y='Quantidade',
-                        color='TIPO_COMUNICACAO',
-                        title='<b>Dados Móveis e Solinfnet por Unidade</b>',
-                        text='Quantidade',
-                        barmode='stack',
-                        color_discrete_sequence=cores_personalizadas
-                    )
-                    fig_com.update_layout(
-                        plot_bgcolor='#121212',
-                        paper_bgcolor='#121212',
-                        font_color='#FFFFFF',
-                        title_font_color='#FFFFFF',
-                        legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
-                        height=400
-                    )
-                    st.plotly_chart(fig_com, use_container_width=True)
+                    if not df_contagem_com.empty:
+                        fig_com = px.bar(
+                            df_contagem_com,
+                            x='UNIDADE',
+                            y='Quantidade',
+                            color='TIPO_COMUNICACAO',
+                            title='<b>Dados Móveis e Solinfnet por Unidade</b>',
+                            text='Quantidade',
+                            barmode='stack',
+                            color_discrete_sequence=cores_personalizadas
+                        )
+                        fig_com.update_layout(
+                            plot_bgcolor='#121212',
+                            paper_bgcolor='#121212',
+                            font_color='#FFFFFF',
+                            title_font_color='#FFFFFF',
+                            legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
+                            height=400
+                        )
+                        st.plotly_chart(fig_com, use_container_width=True)
+                    else:
+                        st.warning("Nenhum dado válido encontrado para 'TIPO_COMUNICACAO' (Dados Móveis ou Solinfnet).")
                 else:
                     st.warning("Colunas 'TIPO_COMUNICACAO' ou 'UNIDADE' não encontradas.")
+
 
         with tab_firmware:
             st.markdown("<h2 class='section-title'>Distribuição de Firmwares por Unidade</h2>", unsafe_allow_html=True)
