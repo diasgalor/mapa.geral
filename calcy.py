@@ -208,7 +208,8 @@ def estilo_ponto(row):
     frota = str(row.get("DESC_TIPO_EQUIPAMENTO", "")).strip().lower()
     return mapa_frota_icones.get(frota, ("#F44336", "o"))  # Vermelho padrão
 
-def plotar_interpolacao(grid_x, grid_y, grid_numerico, geom_fazenda, bounds, df_pontos):
+# Função ajustada para plotar a interpolação
+def plotar_interpolacao(grid_x, grid_y, grid_numerico, geom_fazenda, bounds, df_pontos, unidade):
     minx, maxx, miny, maxy = bounds
     colors = {1: '#F44336', 2: '#FFCA28', 3: '#4CAF50', 4: '#1B5E20'}  # Vermelho, Amarelo, Verde, Verde Escuro
     cmap = plt.matplotlib.colors.ListedColormap([colors[i] for i in range(1, 5)])
@@ -216,17 +217,20 @@ def plotar_interpolacao(grid_x, grid_y, grid_numerico, geom_fazenda, bounds, df_
     fig, ax = plt.subplots(figsize=(10, 8), facecolor='#121212')
     ax.set_facecolor('#121212')
 
+    # Plotar a camada raster (interpolação IDW)
     im = ax.imshow(grid_numerico, extent=(minx, maxx, miny, maxy), origin='lower', cmap=cmap, interpolation='nearest', alpha=0.8)
 
+    # Plotar os limites da fazenda
     if geom_fazenda is not None and not geom_fazenda.is_empty:
         if isinstance(geom_fazenda, MultiPolygon):
             for part in geom_fazenda.geoms:
                 if part.is_valid:
-                    gpd.GeoSeries([part]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2)
+                    gpd.GeoSeries([part]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2, label=f'Limites de {unidade}')
         else:
             if geom_fazenda.is_valid:
-                gpd.GeoDataFrame(geometry=[geom_fazenda]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2)
+                gpd.GeoSeries([geom_fazenda]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2, label=f'Limites de {unidade}')
 
+    # Plotar os pontos dos equipamentos
     legenda = {}
     for _, row in df_pontos.iterrows():
         cor, marcador = estilo_ponto(row)
@@ -246,271 +250,108 @@ def plotar_interpolacao(grid_x, grid_y, grid_numerico, geom_fazenda, bounds, df_
     ax.set_ylim(miny, maxy)
     ax.set_xlabel("Longitude", color='#E0E0E0')
     ax.set_ylabel("Latitude", color='#E0E0E0')
-    ax.set_title("Interpolação IDW da Intensidade do Sinal", color='#E0E0E0')
+    ax.set_title(f"Intensidade do Sinal - {unidade}", color='#E0E0E0')
     ax.tick_params(colors='#E0E0E0')
 
     cbar = plt.colorbar(im, ax=ax, ticks=[1.5, 2.5, 3.5, 4.5])
     cbar.ax.set_yticklabels(['Ruim', 'Regular', 'Bom', 'Ótimo'], color='#E0E0E0')
     cbar.set_label('Classe de Sinal', color='#E0E0E0')
 
-    ax.legend(title="Tipo de Equipamento", loc='upper right', markerscale=1.2, facecolor='#1E1E1E', edgecolor='#424242', labelcolor='#E0E0E0')
+    ax.legend(title="Legenda", loc='upper right', markerscale=1.2, facecolor='#1E1E1E', edgecolor='#424242', labelcolor='#E0E0E0')
     ax.grid(True, linestyle='--', alpha=0.5, color='#424242')
+    
     st.pyplot(fig)
     plt.close(fig)
     gc.collect()
 
-# --- Título e Descrição ---
-st.markdown("<h1 class='main-title'>Monitoramento de Equipamentos Climáticos</h1>", unsafe_allow_html=True)
-st.markdown("""
-    <p class='description'>Visualize dados de equipamentos climáticos e analise a intensidade do sinal em suas fazendas.
-    Faça o upload dos arquivos Excel e KML ou atualize os dados salvos.</p>
-""", unsafe_allow_html=True)
-
-# --- Sidebar para Upload e Atualização ---
-st.sidebar.markdown("<h2 class='sidebar-header'>Gerenciamento de Arquivos</h2>", unsafe_allow_html=True)
-
-excel_file = st.sidebar.file_uploader("Selecione o arquivo Excel (.xlsx)", type=["xlsx"], key="excel_uploader")
-kml_file = st.sidebar.file_uploader("Selecione o arquivo KML (.kml - Opcional)", type=["kml"], key="kml_uploader")
-
-# Estado para armazenar hashes dos arquivos
-if 'excel_hash' not in st.session_state:
-    st.session_state.excel_hash = None
-if 'kml_hash' not in st.session_state:
-    st.session_state.kml_hash = None
-
-# Processar uploads
-df_csv = None
-gdf_kml = None
-
-if excel_file:
-    if check_file_updates(excel_file, EXCEL_PATH):
-        st.session_state.excel_hash = save_uploaded_file(excel_file, EXCEL_PATH)
-        st.sidebar.success("Arquivo Excel salvo com sucesso!")
-    else:
-        st.sidebar.info("Arquivo Excel já está atualizado.")
-
-if kml_file:
-    if check_file_updates(kml_file, KML_PATH):
-        st.session_state.kml_hash = save_uploaded_file(kml_file, KML_PATH)
-        st.sidebar.success("Arquivo KML salvo com sucesso!")
-    else:
-        st.sidebar.info("Arquivo KML já está atualizado.")
-
-# Botão de Atualizar
-if st.sidebar.button("Atualizar Dados", key="update_button"):
-    if os.path.exists(EXCEL_PATH):
-        try:
-            df_csv = pd.read_excel(EXCEL_PATH, dtype={'VL_LATITUDE': str, 'VL_LONGITUDE': str})
-            df_csv.columns = df_csv.columns.str.strip()
-            df_csv["VL_LATITUDE"] = df_csv["VL_LATITUDE"].apply(normalizar_coordenadas)
-            df_csv["VL_LONGITUDE"] = df_csv["VL_LONGITUDE"].apply(normalizar_coordenadas)
-            df_csv["UNIDADE"] = df_csv["UNIDADE"].apply(formatar_nome)
-            df_csv = df_csv.dropna(subset=["VL_LATITUDE", "VL_LONGITUDE"])
-            df_csv = df_csv[(df_csv["VL_LATITUDE"].between(-90, 90)) & (df_csv["VL_LONGITUDE"].between(-180, 180))]
-            st.sidebar.success("Dados Excel atualizados!")
-        except Exception as e:
-            st.sidebar.error(f"Erro ao atualizar Excel: {e}")
-    else:
-        st.sidebar.error("Nenhum arquivo Excel salvo para atualizar.")
-
-    if os.path.exists(KML_PATH):
-        try:
-            with open(KML_PATH, 'r', encoding='utf-8') as f:
-                kml_content = f.read()
-            gdf_kml = extrair_dados_kml(kml_content)
-            if gdf_kml is not None and not gdf_kml.empty:
-                gdf_kml['NomeFazendaExtraido'] = gdf_kml.get('NOME_FAZ', gdf_kml.get('Name', 'sem_nome'))
-                gdf_kml['NomeFazendaKML_Padronizada'] = gdf_kml['NomeFazendaExtraido'].apply(formatar_nome)
-                gdf_kml['geometry'] = gdf_kml['geometry'].apply(lambda geom: geom.buffer(0) if geom and not geom.is_valid else geom)
-                gdf_kml = gdf_kml[gdf_kml['geometry'].notna() & ~gdf_kml['geometry'].is_empty]
-                st.sidebar.success("Dados KML atualizados!")
-            else:
-                gdf_kml = None
-                st.sidebar.warning("KML atualizado, mas nenhuma geometria válida encontrada.")
-        except Exception as e:
-            st.sidebar.error(f"Erro ao atualizar KML: {e}")
-            gdf_kml = None
-    else:
-        st.sidebar.info("Nenhum arquivo KML salvo para atualizar.")
-
-# Carregar arquivos salvos na inicialização
-if df_csv is None and os.path.exists(EXCEL_PATH):
-    try:
-        df_csv = pd.read_excel(EXCEL_PATH, dtype={'VL_LATITUDE': str, 'VL_LONGITUDE': str})
-        df_csv.columns = df_csv.columns.str.strip()
-        df_csv["VL_LATITUDE"] = df_csv["VL_LATITUDE"].apply(normalizar_coordenadas)
-        df_csv["VL_LONGITUDE"] = df_csv["VL_LONGITUDE"].apply(normalizar_coordenadas)
-        df_csv["UNIDADE"] = df_csv["UNIDADE"].apply(formatar_nome)
-        df_csv = df_csv.dropna(subset=["VL_LATITUDE", "VL_LONGITUDE"])
-        df_csv = df_csv[(df_csv["VL_LATITUDE"].between(-90, 90)) & (df_csv["VL_LONGITUDE"].between(-180, 180))]
-    except Exception as e:
-        st.error(f"Erro ao carregar Excel salvo: {e}")
-
-if gdf_kml is None and os.path.exists(KML_PATH):
-    try:
-        with open(KML_PATH, 'r', encoding='utf-8') as f:
-            kml_content = f.read()
-        gdf_kml = extrair_dados_kml(kml_content)
-        if gdf_kml is not None and not gdf_kml.empty:
-            gdf_kml['NomeFazendaExtraido'] = gdf_kml.get('NOME_FAZ', gdf_kml.get('Name', 'sem_nome'))
-            gdf_kml['NomeFazendaKML_Padronizada'] = gdf_kml['NomeFazendaExtraido'].apply(formatar_nome)
-            gdf_kml['geometry'] = gdf_kml['geometry'].apply(lambda geom: geom.buffer(0) if geom and not geom.is_valid else geom)
-            gdf_kml = gdf_kml[gdf_kml['geometry'].notna() & ~gdf_kml['geometry'].is_empty]
-        else:
-            gdf_kml = None
-    except Exception as e:
-        st.error(f"Erro ao carregar KML salvo: {e}")
-        gdf_kml = None
-
-# --- Dashboard Principal ---
-if df_csv is not None and not df_csv.empty:
-    st.markdown("<h2 class='section-title'>📊 Dashboard de Equipamentos</h2>", unsafe_allow_html=True)
+# Aba do Mapa de Sinal (substitua na seção correspondente)
+with tab_sinal:
+    st.markdown("<h3 class='subsection-title'>Mapa de Intensidade do Sinal</h3>", unsafe_allow_html=True)
+    signal_cols_ok = all(col in df_csv.columns for col in ['VL_LATITUDE', 'VL_LONGITUDE', 'UNIDADE', 'DESC_TIPO_EQUIPAMENTO'])
     
-    tab_labels = ["📊 Percentual 4G", "🌎 Mapa de Equipamentos", "📡 Mapa de Sinal", "📈 Firmware", "📊 Comunicação"]
-    tab_4g, tab_mapa, tab_sinal, tab_firmware, tab_comunicacao = st.tabs(tab_labels)
+    if signal_cols_ok and gdf_kml is not None and not gdf_kml.empty:
+        gdf_equipamentos = gpd.GeoDataFrame(
+            df_csv,
+            geometry=gpd.points_from_xy(df_csv['VL_LONGITUDE'], df_csv['VL_LATITUDE']),
+            crs="EPSG:4326"
+        )
+        gdf_equipamentos['UNIDADE_Padronizada'] = gdf_equipamentos['UNIDADE'].apply(formatar_nome)
+        unidades_disponiveis = sorted(list(set(gdf_kml['NomeFazendaKML_Padronizada'].dropna()) & set(gdf_equipamentos['UNIDADE_Padronizada'].dropna())))
 
-    # Paleta de cores para gráficos
-    cores_personalizadas = ["#2E7D32", "#1565C0", "#FFCA28", "#E64A19"]  # Verde, Azul, Amarelo, Laranja
+        if unidades_disponiveis:
+            # Gerenciar estado da selectbox
+            if 'selected_unidade_sinal' not in st.session_state:
+                st.session_state.selected_unidade_sinal = unidades_disponiveis[0]
 
-    with tab_4g:
-        st.markdown("<h3 class='subsection-title'>Percentual de Equipamentos com Dados Móveis</h3>", unsafe_allow_html=True)
-        if 'D_MOVEIS_AT' in df_csv.columns:
-            contagem_moveis = df_csv['D_MOVEIS_AT'].value_counts()
-            fig_4g = px.pie(
-                values=contagem_moveis.values,
-                names=contagem_moveis.index,
-                title='<b>Percentual de Equipamentos com Dados Móveis</b>',
-                hole=0.5,
-                color_discrete_sequence=cores_personalizadas
+            selected_unidade = st.selectbox(
+                "Selecione a Fazenda para Interpolação:",
+                unidades_disponiveis,
+                key="fazenda_sinal",
+                index=unidades_disponiveis.index(st.session_state.selected_unidade_sinal) if st.session_state.selected_unidade_sinal in unidades_disponiveis else 0,
+                on_change=lambda: st.session_state.update(selected_unidade_sinal=st.session_state.fazenda_sinal)
             )
-            fig_4g.update_traces(textinfo='percent+label', textfont_size=14)
-            fig_4g.update_layout(
-                showlegend=True, 
-                legend_title='Dados Móveis',
-                plot_bgcolor='#121212',
-                paper_bgcolor='#121212',
-                font_color='#E0E0E0',
-                height=500
-            )
-            st.plotly_chart(fig_4g, use_container_width=True)
-        else:
-            st.warning("Coluna 'D_MOVEIS_AT' não encontrada.")
 
-    with tab_mapa:
-        st.markdown("<h3 class='subsection-title'>Mapa Interativo de Equipamentos</h3>", unsafe_allow_html=True)
-        map_cols_ok = all(col in df_csv.columns for col in ['DESC_TIPO_EQUIPAMENTO', 'FROTA', 'STATUS'])
-        if map_cols_ok:
-            mapa = folium.Map(location=[df_csv["VL_LATITUDE"].mean(), df_csv["VL_LONGITUDE"].mean()], zoom_start=6)
-            marker_cluster = MarkerCluster().add_to(mapa)
+            # Limpar cache ao mudar a unidade
+            cache_key = f"interpolacao_idw_{selected_unidade}"
+            interpolacao_idw.clear()  # Limpar cache global da função
+            df_fazenda = gdf_equipamentos[gdf_equipamentos['UNIDADE_Padronizada'] == selected_unidade].copy()
+            geom_df = gdf_kml[gdf_kml['NomeFazendaKML_Padronizada'] == selected_unidade]
 
-            df_estacoes = df_csv[df_csv["DESC_TIPO_EQUIPAMENTO"].str.contains("ESTACAO", case=False, na=False)]
-            for _, row in df_estacoes.iterrows():
-                if pd.notna(row["VL_LATITUDE"]) and pd.notna(row["VL_LONGITUDE"]):
-                    folium.Marker(
-                        location=[row["VL_LATITUDE"], row["VL_LONGITUDE"]],
-                        popup=f"<b>Frota:</b> {row['FROTA']}<br><b>Unidade:</b> {row['UNIDADE']}<br><b>Tipo:</b> {row['DESC_TIPO_EQUIPAMENTO']}",
-                        icon=folium.Icon(color="purple", icon="cloud", prefix="fa")
-                    ).add_to(marker_cluster)
+            if not df_fazenda.empty and not geom_df.empty:
+                fazenda_geom = geom_df.unary_union
+                if not fazenda_geom.is_valid:
+                    fazenda_geom = fazenda_geom.buffer(0)
 
-            df_pluviometros_ativos = df_csv[
-                (df_csv["DESC_TIPO_EQUIPAMENTO"].str.contains("PLUVIOMETRO", case=False, na=False)) &
-                (df_csv["STATUS"].str.upper() == "ATIVO")
-            ]
-            for _, row in df_pluviometros_ativos.iterrows():
-                if pd.notna(row["VL_LATITUDE"]) and pd.notna(row["VL_LONGITUDE"]):
-                    folium.Marker(
-                        location=[row["VL_LATITUDE"], row["VL_LONGITUDE"]],
-                        popup=f"<b>Frota:</b> {row['FROTA']}<br><b>Unidade:</b> {row['UNIDADE']}<br><b>Tipo:</b> {row['DESC_TIPO_EQUIPAMENTO']}",
-                        icon=folium.Icon(color="green", icon="tint", prefix="fa")
-                    ).add_to(marker_cluster)
+                df_fazenda['DBM'] = pd.to_numeric(df_fazenda['DBM'], errors='coerce')
+                has_dbm = 'DBM' in df_fazenda.columns and not df_fazenda['DBM'].dropna().empty
+                has_intensidade = 'INTENSIDADE' in df_fazenda.columns and not df_fazenda['INTENSIDADE'].dropna().empty
+                mapping = {"ruim": 1, "regular": 2, "bom": 3, "otimo": 4}
 
-            if gdf_kml is not None and not gdf_kml.empty:
-                folium.GeoJson(
-                    gdf_kml,
-                    name="Limites das Fazendas",
-                    tooltip=folium.GeoJsonTooltip(fields=["Name"], aliases=["Fazenda:"]),
-                    style_function=lambda x: {"fillColor": "#1565C0", "color": "#FFFFFF", "weight": 1, "fillOpacity": 0.2}
-                ).add_to(mapa)
+                val_col_used = None
+                if has_dbm and has_intensidade:
+                    df_fazenda['INTENSIDADE_MAP'] = df_fazenda['INTENSIDADE'].apply(
+                        lambda x: mapping.get(unidecode(str(x)).strip().lower(), np.nan)
+                    )
+                    for idx, row in df_fazenda.iterrows():
+                        if pd.isna(row['DBM']) and pd.notna(row.get('INTENSIDADE_MAP')):
+                            df_fazenda.loc[idx, 'DBM'] = row['INTENSIDADE_MAP']
+                    val_col_used = 'DBM'
+                elif has_dbm:
+                    val_col_used = 'DBM'
+                elif has_intensidade:
+                    df_fazenda['DBM'] = df_fazenda['INTENSIDADE'].apply(
+                        lambda x: mapping.get(unidecode(str(x)).strip().lower(), np.nan)
+                    )
+                    val_col_used = 'DBM'
 
-            folium.LayerControl().add_to(mapa)
-            st.components.v1.html(mapa._repr_html_(), height=500)
-        else:
-            st.error("Colunas necessárias para o mapa de equipamentos não encontradas.")
-
-    with tab_sinal:
-        st.markdown("<h3 class='subsection-title'>Mapa de Intensidade do Sinal</h3>", unsafe_allow_html=True)
-        signal_cols_ok = all(col in df_csv.columns for col in ['VL_LATITUDE', 'VL_LONGITUDE', 'UNIDADE', 'DESC_TIPO_EQUIPAMENTO'])
-        if signal_cols_ok and gdf_kml is not None and not gdf_kml.empty:
-            gdf_equipamentos = gpd.GeoDataFrame(
-                df_csv,
-                geometry=gpd.points_from_xy(df_csv['VL_LONGITUDE'], df_csv['VL_LATITUDE']),
-                crs="EPSG:4326"
-            )
-            gdf_equipamentos['UNIDADE_Padronizada'] = gdf_equipamentos['UNIDADE'].apply(formatar_nome)
-            unidades_disponiveis = sorted(list(set(gdf_kml['NomeFazendaKML_Padronizada'].dropna()) & set(gdf_equipamentos['UNIDADE_Padronizada'].dropna())))
-
-            if unidades_disponiveis:
-                selected_unidade = st.selectbox(
-                    "Selecione a Fazenda para Interpolação:",
-                    unidades_disponiveis,
-                    key="fazenda_sinal"
-                )
-                df_fazenda = gdf_equipamentos[gdf_equipamentos['UNIDADE_Padronizada'] == selected_unidade].copy()
-                geom_df = gdf_kml[gdf_kml['NomeFazendaKML_Padronizada'] == selected_unidade]
-
-                if not df_fazenda.empty and not geom_df.empty:
-                    fazenda_geom = geom_df.unary_union
-                    if not fazenda_geom.is_valid:
-                        fazenda_geom = fazenda_geom.buffer(0)
-
-                    df_fazenda['DBM'] = pd.to_numeric(df_fazenda['DBM'], errors='coerce')
-                    has_dbm = 'DBM' in df_fazenda.columns and not df_fazenda['DBM'].dropna().empty
-                    has_intensidade = 'INTENSIDADE' in df_fazenda.columns and not df_fazenda['INTENSIDADE'].dropna().empty
-                    mapping = {"ruim": 1, "regular": 2, "bom": 3, "otimo": 4}
-
-                    val_col_used = None
-                    if has_dbm and has_intensidade:
-                        df_fazenda['INTENSIDADE_MAP'] = df_fazenda['INTENSIDADE'].apply(
-                            lambda x: mapping.get(unidecode(str(x)).strip().lower(), np.nan)
+                if val_col_used:
+                    df_fazenda_filtered = df_fazenda.dropna(subset=[val_col_used])
+                    if not df_fazenda_filtered.empty:
+                        # Usar uma chave única para cache baseada na unidade
+                        grid_x, grid_y, grid_numerico, bounds = interpolacao_idw(
+                            _df=df_fazenda_filtered,
+                            x_col='VL_LONGITUDE',
+                            y_col='VL_LATITUDE',
+                            val_col=val_col_used,
+                            resolution=0.002,
+                            buffer=0.05,
+                            _geom_mask=fazenda_geom,
+                            _hash=cache_key  # Parâmetro adicional para forçar recálculo
                         )
-                        for idx, row in df_fazenda.iterrows():
-                            if pd.isna(row['DBM']) and pd.notna(row.get('INTENSIDADE_MAP')):
-                                df_fazenda.loc[idx, 'DBM'] = row['INTENSIDADE_MAP']
-                        val_col_used = 'DBM'
-                    elif has_dbm:
-                        val_col_used = 'DBM'
-                    elif has_intensidade:
-                        df_fazenda['DBM'] = df_fazenda['INTENSIDADE'].apply(
-                            lambda x: mapping.get(unidecode(str(x)).strip().lower(), np.nan)
-                        )
-                        val_col_used = 'DBM'
-
-                    if val_col_used:
-                        df_fazenda_filtered = df_fazenda.dropna(subset=[val_col_used])
-                        if not df_fazenda_filtered.empty:
-                            grid_x, grid_y, grid_numerico, bounds = interpolacao_idw(
-                                _df=df_fazenda_filtered,
-                                x_col='VL_LONGITUDE',
-                                y_col='VL_LATITUDE',
-                                val_col=val_col_used,
-                                resolution=0.002,
-                                buffer=0.05,
-                                _geom_mask=fazenda_geom
-                            )
-                            if grid_x is not None:
-                                plotar_interpolacao(grid_x, grid_y, grid_numerico, fazenda_geom, bounds, df_fazenda_filtered)
-                            else:
-                                st.warning("Não foi possível gerar a interpolação.")
+                        if grid_x is not None:
+                            plotar_interpolacao(grid_x, grid_y, grid_numerico, fazenda_geom, bounds, df_fazenda_filtered, selected_unidade)
                         else:
-                            st.warning("Nenhum dado de sinal válido.")
+                            st.warning("Não foi possível gerar a interpolação para esta fazenda.")
                     else:
-                        st.info("Colunas 'DBM' ou 'INTENSIDADE' necessárias.")
+                        st.warning("Nenhum dado de sinal válido para esta fazenda.")
                 else:
-                    st.warning("Nenhum equipamento ou geometria para a fazenda selecionada.")
+                    st.info("Colunas 'DBM' ou 'INTENSIDADE' necessárias para interpolação.")
             else:
-                st.warning("Nenhuma unidade correspondente encontrada.")
+                st.warning("Nenhum equipamento ou geometria encontrada para a fazenda selecionada.")
         else:
-            st.info("Faça o upload dos arquivos Excel e KML para o mapa de sinal.")
+            st.warning("Nenhuma unidade correspondente encontrada entre os arquivos Excel e KML.")
+    else:
+        st.info("Faça o upload dos arquivos Excel e KML para habilitar o mapa de sinal.")
 
     with tab_firmware:
         st.markdown("<h3 class='subsection-title'>Distribuição de Firmwares por Unidade</h3>", unsafe_allow_html=True)
