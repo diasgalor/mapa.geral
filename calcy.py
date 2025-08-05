@@ -160,6 +160,8 @@ def normalizar_coordenadas(valor, scale_factor=1000000000):
             return round(valor_float, 6)
         except ValueError:
             return None
+    elif isinstance(valor, (int, float)):
+        return round(float(valor) / scale_factor, 6)
     return None
 
 @st.cache_data
@@ -167,14 +169,20 @@ def classificar_dbm(valor):
     """Classifica o valor DBM em categorias de sinal."""
     if pd.isna(valor):
         return np.nan
-    elif valor > -70:
-        return 4  # ótimo
-    elif valor > -85:
-        return 3  # bom
-    elif valor > -100:
-        return 2  # regular
-    else:
-        return 1  # ruim
+    try:
+        valor_float = float(valor)
+        if valor_float > -70:
+            return 4  # ótimo
+        elif valor_float > -85:
+            return 3  # bom
+        elif valor_float > -100:
+            return 2  # regular
+        else:
+            return 1  # ruim
+    except (ValueError, TypeError):
+        valor_str = unidecode(str(valor)).strip().lower()
+        mapping = {"otimo": 4, "bom": 3, "regular": 2, "ruim": 1}
+        return mapping.get(valor_str, np.nan)
 
 @st.cache_data(show_spinner="Calculando interpolação IDW...")
 def interpolacao_idw(_df, x_col='VL_LONGITUDE', y_col='VL_LATITUDE', val_col='DBM', resolution=0.002, buffer=0.05, _geom_mask=None):
@@ -246,21 +254,21 @@ def plotar_interpolacao(grid_x, grid_y, grid_numerico, geom_fazenda, bounds, df_
     # Plotar a camada raster (interpolação IDW)
     im = ax.imshow(grid_numerico, extent=(minx, maxx, miny, maxy), origin='lower', cmap=cmap, interpolation='nearest', alpha=0.8)
 
-    # Plotar os limites da fazenda
+    # Plotar os limites da fazenda sem legenda
     if geom_fazenda is not None and not geom_fazenda.is_empty:
         try:
             if isinstance(geom_fazenda, MultiPolygon):
                 for part in geom_fazenda.geoms:
                     if part.is_valid:
-                        gpd.GeoSeries([part]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2, label=f'Limites de {unidade}')
+                        gpd.GeoSeries([part]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2)
             else:
                 if geom_fazenda.is_valid:
-                    gpd.GeoSeries([geom_fazenda]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2, label=f'Limites de {unidade}')
+                    gpd.GeoSeries([geom_fazenda]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2)
                 else:
                     st.warning(f"Geometria inválida para a fazenda '{unidade}'. Tentando corrigir...")
                     geom_fazenda = geom_fazenda.buffer(0)
                     if geom_fazenda.is_valid:
-                        gpd.GeoSeries([geom_fazenda]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2, label=f'Limites de {unidade}')
+                        gpd.GeoSeries([geom_fazenda]).boundary.plot(ax=ax, color='#FFFFFF', linewidth=2)
                     else:
                         st.error(f"Não foi possível corrigir a geometria para a fazenda '{unidade}'.")
         except Exception as e:
@@ -333,11 +341,12 @@ def upload_page():
     if st.button("Atualizar Dados", key="update_button"):
         if os.path.exists(EXCEL_PATH):
             try:
-                df_csv = pd.read_excel(EXCEL_PATH, dtype={'VL_LATITUDE': str, 'VL_LONGITUDE': str})
+                df_csv = pd.read_excel(EXCEL_PATH, dtype={'VL_LATITUDE': str, 'VL_LONGITUDE': str, 'VL_FIRMWARE_EQUIPAMENTO': str})
                 df_csv.columns = df_csv.columns.str.strip()
                 df_csv["VL_LATITUDE"] = df_csv["VL_LATITUDE"].apply(normalizar_coordenadas)
                 df_csv["VL_LONGITUDE"] = df_csv["VL_LONGITUDE"].apply(normalizar_coordenadas)
                 df_csv["UNIDADE"] = df_csv["UNIDADE"].apply(formatar_nome)
+                df_csv["VL_FIRMWARE_EQUIPAMENTO"] = df_csv["VL_FIRMWARE_EQUIPAMENTO"].astype(str).replace('nan', None)
                 df_csv = df_csv.dropna(subset=["VL_LATITUDE", "VL_LONGITUDE"])
                 df_csv = df_csv[(df_csv["VL_LATITUDE"].between(-90, 90)) & (df_csv["VL_LONGITUDE"].between(-180, 180))]
                 st.success("Dados Excel atualizados!")
@@ -378,11 +387,12 @@ df_csv = None
 gdf_kml = None
 if os.path.exists(EXCEL_PATH):
     try:
-        df_csv = pd.read_excel(EXCEL_PATH, dtype={'VL_LATITUDE': str, 'VL_LONGITUDE': str})
+        df_csv = pd.read_excel(EXCEL_PATH, dtype={'VL_LATITUDE': str, 'VL_LONGITUDE': str, 'VL_FIRMWARE_EQUIPAMENTO': str})
         df_csv.columns = df_csv.columns.str.strip()
         df_csv["VL_LATITUDE"] = df_csv["VL_LATITUDE"].apply(normalizar_coordenadas)
         df_csv["VL_LONGITUDE"] = df_csv["VL_LONGITUDE"].apply(normalizar_coordenadas)
         df_csv["UNIDADE"] = df_csv["UNIDADE"].apply(formatar_nome)
+        df_csv["VL_FIRMWARE_EQUIPAMENTO"] = df_csv["VL_FIRMWARE_EQUIPAMENTO"].astype(str).replace('nan', None)
         df_csv = df_csv.dropna(subset=["VL_LATITUDE", "VL_LONGITUDE"])
         df_csv = df_csv[(df_csv["VL_LATITUDE"].between(-90, 90)) & (df_csv["VL_LONGITUDE"].between(-180, 180))]
     except Exception as e:
@@ -402,11 +412,10 @@ if os.path.exists(KML_PATH):
         st.error(f"Erro ao carregar KML salvo: {e}")
         gdf_kml = None
 
-# --- Lógica de Navegação ---
+# --- Dashboard Principal ---
 if st.session_state.page == "upload":
     upload_page()
 else:
-    # --- Dashboard Principal ---
     st.markdown("<h1 class='main-title'>Monitoramento de Equipamentos Climáticos</h1>", unsafe_allow_html=True)
     st.markdown("""
         <p class='description'>Visualize dados de equipamentos climáticos e analise a intensidade do sinal em suas fazendas.</p>
@@ -478,29 +487,35 @@ else:
         with tab_firmware:
             st.markdown("<h2 class='section-title'>Distribuição de Firmwares por Unidade</h2>", unsafe_allow_html=True)
             if 'VL_FIRMWARE_EQUIPAMENTO' in df_csv.columns and 'UNIDADE' in df_csv.columns:
-                df_firmware_fazenda = df_csv.groupby(['VL_FIRMWARE_EQUIPAMENTO', 'UNIDADE']).size().reset_index(name='Quantidade')
-                fig_firmware = px.bar(
-                    df_firmware_fazenda,
-                    x='Quantidade',
-                    y='UNIDADE',
-                    color='VL_FIRMWARE_EQUIPAMENTO',
-                    title='<b>Distribuição de Firmwares por Unidade</b>',
-                    labels={'VL_FIRMWARE_EQUIPAMENTO': 'Firmware', 'UNIDADE': 'Unidade', 'Quantidade': 'Qtd.'},
-                    orientation='h',
-                    text='Quantidade',
-                    color_discrete_sequence=cores_personalizadas
-                )
-                fig_firmware.update_layout(
-                    plot_bgcolor='#121212',
-                    paper_bgcolor='#121212',
-                    font_color='#FFFFFF',
-                    title_font_color='#FFFFFF',
-                    legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
-                    height=600,
-                    xaxis=dict(title='Quantidade de Equipamentos'),
-                    yaxis=dict(title='')
-                )
-                st.plotly_chart(fig_firmware, use_container_width=True)
+                # Filtrar valores nulos ou vazios
+                df_firmware_fazenda = df_csv.dropna(subset=['VL_FIRMWARE_EQUIPAMENTO', 'UNIDADE'])
+                df_firmware_fazenda = df_firmware_fazenda[df_firmware_fazenda['VL_FIRMWARE_EQUIPAMENTO'] != '']
+                if not df_firmware_fazenda.empty:
+                    df_firmware_fazenda = df_firmware_fazenda.groupby(['VL_FIRMWARE_EQUIPAMENTO', 'UNIDADE']).size().reset_index(name='Quantidade')
+                    fig_firmware = px.bar(
+                        df_firmware_fazenda,
+                        x='Quantidade',
+                        y='UNIDADE',
+                        color='VL_FIRMWARE_EQUIPAMENTO',
+                        title='<b>Distribuição de Firmwares por Unidade</b>',
+                        labels={'VL_FIRMWARE_EQUIPAMENTO': 'Firmware', 'UNIDADE': 'Unidade', 'Quantidade': 'Qtd.'},
+                        orientation='h',
+                        text='Quantidade',
+                        color_discrete_sequence=cores_personalizadas
+                    )
+                    fig_firmware.update_layout(
+                        plot_bgcolor='#121212',
+                        paper_bgcolor='#121212',
+                        font_color='#FFFFFF',
+                        title_font_color='#FFFFFF',
+                        legend=dict(bgcolor='#424242', font=dict(color='#FFFFFF')),
+                        height=600,
+                        xaxis=dict(title='Quantidade de Equipamentos'),
+                        yaxis=dict(title='')
+                    )
+                    st.plotly_chart(fig_firmware, use_container_width=True)
+                else:
+                    st.warning("Nenhum dado válido encontrado nas colunas 'VL_FIRMWARE_EQUIPAMENTO' ou 'UNIDADE' após filtragem.")
             else:
                 st.warning("Colunas 'VL_FIRMWARE_EQUIPAMENTO' ou 'UNIDADE' não encontradas.")
 
